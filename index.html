@@ -79,7 +79,41 @@ button{font:inherit;color:inherit;cursor:pointer}button:focus-visible,input:focu
 #room .hud{font-size:12px}#room .wobj{width:min(290px,60%);padding:8px 12px}#room .lvl{width:min(160px,34%);padding:6px 12px}
 #room .task{top:74px;width:min(210px,38%);padding:9px 12px}#room .mm{width:84px;height:84px}#room .qk{bottom:22px}#room .qk button{width:38px;height:38px}
 @media(max-width:860px){#room .task{display:none}}
-</style></head><body>
+</style><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#07162a">
+<script>
+/* ===== MÓVIL: pantalla completa + horizontal + escala (no afecta al escritorio) =====
+   En móvil se usa el diseño de escritorio dentro de un lienzo virtual que se escala para llenar la pantalla.
+   Si el teléfono está en vertical y no permite bloquear la orientación (p. ej. iPhone), el lienzo se gira 90°. */
+(function(){
+ var root=document.documentElement;
+ if(!(matchMedia("(pointer:coarse)").matches&&Math.min(screen.width,screen.height)<=600))return;
+ root.classList.add("mob");
+ var mv=document.querySelector('meta[name=viewport]');if(mv)mv.content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no";
+ /* El diseño de escritorio se mantiene: se anulan los @media de móvil y vw/vh pasan a medirse sobre el lienzo virtual */
+ [].forEach.call(document.querySelectorAll("style"),function(st){
+  st.textContent=st.textContent.replace(/@media\s*\(\s*max-width\s*:\s*(860|700)px\s*\)/g,"@media(max-width:0px)")
+   .replace(/(^|[^\w.+\/-])(\d*\.?\d+)(vw|vh)(?![\w+\/=])/g,function(m,a,n,u){return a+"calc(var(--"+u+")*"+n+"/100)"});});
+ var cs=document.createElement("style");
+ cs.textContent="html.mob,html.mob body{margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;background:#07162a}html.mob body{position:fixed;left:0;top:0;width:var(--vw);height:var(--vh);transform-origin:0 0;transform:var(--st)}";
+ document.head.appendChild(cs);
+ var done=false;
+ function fit(){
+  var a=document.activeElement;if(done&&a&&/^(INPUT|TEXTAREA)$/.test(a.tagName))return; /* el teclado no debe re-escalar */
+  var vv=window.visualViewport,W=Math.round(vv?vv.width:innerWidth),H=Math.round(vv?vv.height:innerHeight),port=H>W,aw=port?H:W,ah=port?W:H;
+  var Vh=600,Vw=Math.max(1000,Math.min(1400,Math.round(Vh*aw/ah))),s=Math.min(aw/Vw,ah/Vh),x=(aw-Vw*s)/2,y=(ah-Vh*s)/2;
+  root.style.setProperty("--vw",Vw+"px");root.style.setProperty("--vh",Vh+"px");
+  root.style.setProperty("--st",port?"translate("+W+"px,0) rotate(90deg) translate("+x+"px,"+y+"px) scale("+s+")":"translate("+x+"px,"+y+"px) scale("+s+")");done=true;}
+ function fs(){var e=root,r=e.requestFullscreen||e.webkitRequestFullscreen;
+  if(r&&!document.fullscreenElement&&!document.webkitFullscreenElement){try{var p=r.call(e,{navigationUI:"hide"});if(p&&p.catch)p.catch(function(){})}catch(_){}}
+  try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock("landscape").catch(function(){})}catch(_){}}
+ fit();fs();
+ var t;function later(){fit();clearTimeout(t);t=setTimeout(fit,250)}
+ addEventListener("resize",later);addEventListener("orientationchange",later);document.addEventListener("fullscreenchange",later);
+ if(window.visualViewport)visualViewport.addEventListener("resize",later);
+ ["pointerup","touchend","click"].forEach(function(ev){addEventListener(ev,fs,{passive:true})}); /* el navegador exige un toque del usuario para pantalla completa */
+})();
+</script>
+</head><body>
 
 <section id="welcome" class="screen on">
  <div class="logo" style="font-size:22px">NURSE <b>VR</b></div>
