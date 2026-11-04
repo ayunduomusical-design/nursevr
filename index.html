@@ -219,7 +219,7 @@ const $=s=>document.querySelector(s),Sim={t0:0,iv:null,tab:"vit",obs:{},rev:{},e
  clock(){const s=Math.floor((Date.now()-this.t0)/1000);return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")},
  reset(){this.obs={};this.rev={};this.evo=["Ingreso: paciente semisentado, disneico, con edema en miembros inferiores."];Clin.reset();Ev.reset();Chat.reset();Aud.tension=0;$("#chat").innerHTML="";this.t0=Date.now();clearInterval(this.iv);this.iv=setInterval(()=>$("#clock").textContent=this.clock(),1000)},
  say(w,t){const d=document.createElement("div");d.className="m "+w;d.textContent=t;$("#chat").append(d);$("#chat").scrollTop=1e9;
-  if(w==="p"&&this.speak&&window.speechSynthesis){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="es-ES";speechSynthesis.speak(u)}},
+  if(w==="p"&&this.speak)Voz.decir(t)},
  act(k,txt,tag,t,edu){this.obs[k]=txt;if(tag)Ev.add("ok",tag,0,k);this.refresh();toast(txt)},
  acts:{
   pa:()=>{Sim.rev.pa=1;Sim.act("pa","Presión arterial: "+Clin.V.pa+" mmHg","Midió PA","ok")},
@@ -302,8 +302,19 @@ $("#acts").onclick=e=>{const b=e.target.closest("button");if(b)Sim.acts[b.datase
 $("#end").onclick=()=>confirm("¿Finalizar y ver la evaluación?")&&finish();
 $("#aud").onclick=()=>{Aud.init();Aud.muted=!Aud.muted;Aud.setVol();$("#aud").textContent=Aud.muted?"🔇 Silenciado":"🔊 Audio"};
 $("#vol").oninput=e=>{Aud.init();Aud.vol=e.target.value/100;Aud.setVol()};
+/* VOZ DEL PACIENTE (síntesis del navegador). Compatible con móvil: independiente del micrófono, elige voz en español,
+   se "desbloquea" con el primer toque y evita el choque cancel()+speak() que descarta la frase en Android. */
+const Voz={ok:!!window.speechSynthesis,v:null,u:null,d:0,
+ elegir(){if(!this.ok)return;const n=x=>x.lang.replace("_","-"),L=speechSynthesis.getVoices().filter(x=>/^es/i.test(x.lang));
+  this.v=["es-CL","es-MX","es-US","es-419","es-ES"].map(p=>L.find(x=>n(x)===p)).find(Boolean)||L[0]||null},
+ desbloquear(){if(!this.ok||this.d)return;this.d=1;try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}},
+ decir(t){if(!this.ok)return;const s=speechSynthesis;this.elegir();try{s.resume()}catch(e){}
+  const hablar=()=>{const u=this.u=new SpeechSynthesisUtterance(t);/* this.u evita que Android descarte el objeto */if(this.v){u.voice=this.v;u.lang=this.v.lang}else u.lang="es-ES";u.rate=.95;s.speak(u)};
+  if(s.speaking||s.pending){s.cancel();setTimeout(hablar,120)}else hablar()}};
+if(Voz.ok){Voz.elegir();if(speechSynthesis.addEventListener)speechSynthesis.addEventListener("voiceschanged",()=>Voz.elegir());
+ ["pointerdown","touchend","click","keydown"].forEach(e=>addEventListener(e,()=>Voz.desbloquear(),{passive:true}))}
 /* VOZ progresiva: reconocimiento (TODO: reemplazar por servicio dedicado) y síntesis (speechSynthesis) del navegador */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(SR){$("#mic").onclick=()=>{const r=new SR();r.lang="es-CL";r.onresult=e=>{$("#q").value=e.results[0][0].transcript;$("#cf").requestSubmit()};r.start()};Sim.speak=true}else $("#mic").style.display="none";
+if(SR){$("#mic").onclick=()=>{const r=new SR();r.lang="es-CL";r.onresult=e=>{$("#q").value=e.results[0][0].transcript;$("#cf").requestSubmit()};r.start()}}else $("#mic").style.display="none";Sim.speak=Voz.ok;
 /* TODO: modelos 3D / entorno VR (WebXR) sustituirán roomSVG; TODO: sistema de evaluación docente enviará Ev.log a un backend. */
 </script></body></html>
