@@ -305,11 +305,15 @@ $("#vol").oninput=e=>{Aud.init();Aud.vol=e.target.value/100;Aud.setVol()};
 /* VOZ DEL PACIENTE (síntesis del navegador). Compatible con móvil: independiente del micrófono, elige voz en español,
    se "desbloquea" con el primer toque y evita el choque cancel()+speak() que descarta la frase en Android. */
 const Voz={ok:!!window.speechSynthesis,v:null,u:null,d:0,
- elegir(){if(!this.ok)return;const n=x=>x.lang.replace("_","-"),L=speechSynthesis.getVoices().filter(x=>/^es/i.test(x.lang));
-  this.v=["es-CL","es-MX","es-US","es-419","es-ES"].map(p=>L.find(x=>n(x)===p)).find(Boolean)||L[0]||null},
+ elegir(){if(!this.ok)return;const n=x=>x.lang.replace("_","-"),L=speechSynthesis.getVoices().filter(x=>/^es/i.test(x.lang)),pr=["es-CL","es-MX","es-US","es-419","es-ES"],
+  /* El navegador no informa el género de la voz: se reconoce por el nombre (Jorge, Juan, Diego, Pablo, Raúl, Eddy, Reed…) */
+  H=/jorge|diego|juan|carlos|pablo|raul|ra[uú]l|enrique|miguel|alberto|pedro|andr[eé]s|[aá]lvaro|jaime|tom[aá]s|gonzalo|emilio|jes[uú]s|sergio|manuel|mateo|alonso|lorenzo|rodrigo|alejandro|antonio|esteban|h[eé]ctor|marcos|nicol[aá]s|[oó]scar|roberto|ram[oó]n|santiago|ricardo|fernando|eddy|reed|rocko|grandpa|(^|[^a-z])(male|hombre|masculin)/i,
+  M=/female|mujer|femenin|m[oó]nica|paulina|marisol|francisca|ang[eé]lica|isabela|helena|sabina|laura|elvira|dalia|elena|luc[ií]a|camila|valentina|mariana|sof[ií]a|salom[eé]|paloma|ximena|ramona|catalina|carmen|esperanza|soledad|flo\b|shelley|sandy/i,
+  pick=A=>pr.map(p=>A.find(x=>n(x)===p)).find(Boolean)||A[0]||null,m=L.filter(x=>H.test(x.name)&&!M.test(x.name));
+  this.h=m.length>0;this.v=this.h?pick(m):pick(L)},
  desbloquear(){if(!this.ok||this.d)return;this.d=1;try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}},
  decir(t){if(!this.ok)return;const s=speechSynthesis;this.elegir();try{s.resume()}catch(e){}
-  const hablar=()=>{const u=this.u=new SpeechSynthesisUtterance(t);/* this.u evita que Android descarte el objeto */if(this.v){u.voice=this.v;u.lang=this.v.lang}else u.lang="es-ES";u.rate=.95;s.speak(u)};
+  const hablar=()=>{const u=this.u=new SpeechSynthesisUtterance(t);/* this.u evita que Android descarte el objeto */if(this.v){u.voice=this.v;u.lang=this.v.lang}else u.lang="es-ES";u.rate=.95;/* sin voz masculina identificable en un móvil: se baja el tono para que siga sonando como hombre */if(!this.h&&matchMedia("(pointer:coarse)").matches){u.pitch=.55;u.rate=.9}s.speak(u)};
   if(s.speaking||s.pending){s.cancel();setTimeout(hablar,120)}else hablar()}};
 if(Voz.ok){Voz.elegir();if(speechSynthesis.addEventListener)speechSynthesis.addEventListener("voiceschanged",()=>Voz.elegir());
  ["pointerdown","touchend","click","keydown"].forEach(e=>addEventListener(e,()=>Voz.desbloquear(),{passive:true}))}
